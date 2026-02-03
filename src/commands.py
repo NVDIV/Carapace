@@ -5,18 +5,21 @@ import turtle
 ##########################################
 
 def init_graphics():
-    turtle.speed(3)
-    turtle.showturtle()
+    """Turtle initialization"""
+    turtle.title("Carapace DSL")
+    turtle.shape("turtle")
+    turtle.color("green")
+    turtle.pensize(3)
+    turtle.speed(3) 
 
-def execute_forward():
-    pass
+def execute_forward(distance: int):
+    """Move forward"""
+    turtle.forward(distance)
 
-def execute_right():
-    pass
-
-def execute_penup():
-    pass
+def execute_left(angle: int):
+    """Turn right"""
+    turtle.left(angle)
 
 def finish_graphics():
-    # Чтобы окно не закрывалось сразу после рисования
+    """Finish drawning (so window won't close automatically)"""
     turtle.done()

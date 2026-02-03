@@ -1,17 +1,48 @@
-##########################################
-#   ENTRY POINT
-##########################################
-# from src.lexer import Lexer
-# from src.parser import Parser
-# from src.interpreter import Interpreter
+import sys
+from pathlib import Path
 
-# TODO: Load file with Carapace code
+from src.lexer import Lexer
+from src.parser import Parser
+from src.interpreter import Interpreter
+from src.errors import CarapaceError
 
-# TODO: Tokenize with Lexer
+def main():
+    # FILE LOADING
+    
+    # file_path = Path("examples/square.cara")
+    file_path = Path("examples/star.cara")
 
-# TODO: Tokens to Parser
+    # Check file extension
+    if file_path.suffix != ".cara":
+        print(f"Error: Unsupported file extension '{file_path.suffix}'. Expected '.cara'.")
+        sys.exit(1)
 
-# TODO: AST to Interpreter
+    # Check if file exists
+    if not file_path.exists():
+        print(f"Error: File '{file_path}' not found.")
+        sys.exit(1)
+
+    # Load code from file
+    with open(file_path, 'r', encoding='utf-8') as file:
+        source_code = file.read()
+
+    try:
+        # Lexical Analysis
+        lexer = Lexer(source_code)
+        tokens = lexer.tokenize()
+
+        # Parsing (Tokens -> AST Tree)
+        parser = Parser(tokens)
+        ast_tree = parser.parse()
+
+        # Execution
+        interpreter = Interpreter(ast_tree)
+        interpreter.run()
+
+        print("Execution finished successfully.")
+
+    except CarapaceError as e:
+        print(f"Carapace Error: {e}")
 
 if __name__ == "__main__":
     main()

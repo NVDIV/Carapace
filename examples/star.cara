@@ -1,0 +1,4 @@
+REPEAT 5 [
+    FORWARD 300
+    LEFT 144
+]

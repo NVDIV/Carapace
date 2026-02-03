@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 from enum import Enum, auto
+from src.errors import LexerError
 
 ##########################################
 #   TOKENS
@@ -10,10 +11,14 @@ class TokenType(Enum):
     # Keywords
     FORWARD = auto() # Move forward
     LEFT = auto()    # Turn left
-    PENUP = auto()   # Lift the pen up
+    REPEAT = auto()  # Instruction Cycle
     
     # Literals
     NUMBER = auto()  # Numeric values (e.g., 100)
+
+    # Symbols
+    LBRACKET = auto() # [  
+    RBRACKET = auto() # ]  
     
     # End of file indicator
     EOF = auto()     
@@ -32,16 +37,8 @@ class Token:
 KEYWORDS = {
     "FORWARD": TokenType.FORWARD,
     "LEFT": TokenType.LEFT,
-    "PENUP": TokenType.PENUP,
+    "REPEAT": TokenType.REPEAT,
 }
-
-##########################################
-#   ERRORS
-##########################################
-
-class LexerError(Exception):
-    """Custom exception class for Lexer errors."""
-    pass
 
 ##########################################
 #   LEXER
@@ -60,6 +57,8 @@ class Lexer:
             ('NUMBER',   r'\d+'),           # Integer numbers
             ('WORD',     r'[A-Za-z_]+'),    # Commands (letters)
             ('NEWLINE',  r'\n'),            # Line breaks
+            ('LBRACKET', r'\['),            # Left bracket
+            ('RBRACKET', r'\]'),            # Rught bracket
             ('SKIP',     r'[ \t]+'),        # Spaces and tabs
             ('MISMATCH', r'.'),             # Any other character (error)
         ]
@@ -82,6 +81,12 @@ class Lexer:
                     if not token_type:
                         raise LexerError(f"Line {self.line}: Unknown command '{value}'")
                     tokens.append(Token(token_type, value.upper(), self.line))
+
+                case 'LBRACKET':
+                    tokens.append(Token(TokenType.LBRACKET, "[", self.line))
+
+                case 'RBRACKET':
+                    tokens.append(Token(TokenType.RBRACKET, "]", self.line))
                 
                 case 'NEWLINE':
                     self.line += 1
