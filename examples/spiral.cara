@@ -1,0 +1,7 @@
+REPEAT 36 [
+    REPEAT 4 [
+        FORWARD 100
+        LEFT 90
+    ]
+    LEFT 10
+]

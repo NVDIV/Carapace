@@ -10,7 +10,8 @@ def main():
     # FILE LOADING
     
     # file_path = Path("examples/square.cara")
-    file_path = Path("examples/star.cara")
+    # file_path = Path("examples/star.cara")
+    file_path = Path("examples/spiral.cara")
 
     # Check file extension
     if file_path.suffix != ".cara":
