@@ -46,7 +46,6 @@ def dump_tokens(tokens):
     print(f"{'TOKEN TYPE':<15} | {'VALUE':<15} | {'LINE':<5}")
     print("-" * 45)
     for token in tokens:
-        # Using :<N to ensure columns stay aligned
         print(f"{token.type.name:<15} | {str(token.value):<15} | {token.line:<5}")
 
 def dump_ast(nodes, level=0):
@@ -55,13 +54,11 @@ def dump_ast(nodes, level=0):
         indent = "  " * level
         node_name = type(node).__name__
         
-        # We extract attributes while excluding 'body' to keep the print clean
         attributes = {k: v for k, v in vars(node).items() if k != 'body'}
         attr_str = f"({attributes})" if attributes else ""
         
         print(f"{indent}└── {node_name} {attr_str}")
         
-        # Recursive call for nested blocks (like REPEAT)
         if hasattr(node, 'body'):
             dump_ast(node.body, level + 1)
 
@@ -70,7 +67,7 @@ def main():
     args = parse_arguments()
     file_path = args.source
 
-    # 1. File Validation
+    # File Validation
     if file_path.suffix != ".cara":
         print(f"Error: Unsupported file extension '{file_path.suffix}'. Use .cara", file=sys.stderr)
         sys.exit(1)
@@ -79,7 +76,7 @@ def main():
         print(f"Error: File '{file_path}' not found.", file=sys.stderr)
         sys.exit(1)
 
-    # 2. Source Loading
+    # Source Loading
     try:
         source_code = file_path.read_text(encoding='utf-8')
     except Exception as e:
@@ -87,7 +84,7 @@ def main():
         sys.exit(1)
 
     try:
-        # 3. Lexical Analysis
+        # Lexical Analysis
         lexer = Lexer(source_code)
         tokens = lexer.tokenize()
 
@@ -96,7 +93,7 @@ def main():
             dump_tokens(tokens)
             return
 
-        # 4. Parsing
+        # Parsing
         parser = Parser(tokens)
         ast_tree = parser.parse()
 
@@ -105,17 +102,15 @@ def main():
             dump_ast(ast_tree)
             return
 
-        # 5. Execution
+        # Execution
         interpreter = Interpreter(ast_tree)
         interpreter.run()
         print("\nExecution finished successfully.")
 
     except CarapaceError as e:
-        # Catching custom errors and printing to stderr
         print(f"\nCarapace Error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        # Catching unexpected system errors
         print(f"\nInternal System Error: {e}", file=sys.stderr)
         sys.exit(1)
 

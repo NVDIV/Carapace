@@ -12,17 +12,19 @@ class TokenType(Enum):
     FORWARD = auto()    # Move forward
     BACKWARD = auto()   # Move backward
     LEFT = auto()       # Turn left
-    RIGHT = auto()       # Turn right
+    RIGHT = auto()      # Turn right
     REPEAT = auto()     # Instruction Cycle
     PENUP = auto();     # Pen up
     PENDOWN = auto()    # Pen down
     COLOR = auto();     # Pen color
     WIDTH = auto();     # Pen width
     SPEED = auto()      # Speed of the turtle
+    SET = auto()        # Variable declaration
     
-    # Literals
+    # Numbers and literals
     NUMBER = auto()     # Numeric values (e.g., 100)
     STRING = auto()     # Strings like "red"
+    IDENTIFIER = auto() # Variable identifier (x, size)
 
     # Symbols
     LBRACKET = auto()   # [  
@@ -53,6 +55,7 @@ KEYWORDS = {
     "COLOR": TokenType.COLOR, 
     "WIDTH": TokenType.WIDTH, 
     "SPEED": TokenType.SPEED,
+    "SET": TokenType.SET,
 }
 
 ##########################################
@@ -71,6 +74,7 @@ class Lexer:
         token_specification = [
             ('NUMBER',   r'\d+'),           # Integer numbers
             ('WORD',     r'[A-Za-z_]+'),    # Commands (letters)
+            ('STRING',   r'"[^"]*"'),       # Strings (in " ")
             ('NEWLINE',  r'\n'),            # Line breaks
             ('LBRACKET', r'\['),            # Left bracket
             ('RBRACKET', r'\]'),            # Rught bracket
@@ -89,17 +93,20 @@ class Lexer:
             match kind:
                 case 'NUMBER':
                     tokens.append(Token(TokenType.NUMBER, int(value), self.line))
-                
+
                 case 'WORD':
                     word_value = value.upper()
                     token_type = KEYWORDS.get(word_value)
-    
+
                     if token_type:
                         tokens.append(Token(token_type, word_value, self.line))
                     else:
-                        tokens.append(Token(TokenType.STRING, word_value, self.line))
-                    
+                        tokens.append(Token(TokenType.IDENTIFIER, value, self.line))
 
+                case 'STRING':
+                    clean_value = value.strip('"')
+                    tokens.append(Token(TokenType.STRING, clean_value, self.line))
+                    
                 case 'LBRACKET':
                     tokens.append(Token(TokenType.LBRACKET, "[", self.line))
 
