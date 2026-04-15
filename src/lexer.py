@@ -9,16 +9,24 @@ from src.errors import LexerError
 
 class TokenType(Enum):
     # Keywords
-    FORWARD = auto() # Move forward
-    LEFT = auto()    # Turn left
-    REPEAT = auto()  # Instruction Cycle
+    FORWARD = auto()    # Move forward
+    BACKWARD = auto()   # Move backward
+    LEFT = auto()       # Turn left
+    RIGHT = auto()       # Turn right
+    REPEAT = auto()     # Instruction Cycle
+    PENUP = auto();     # Pen up
+    PENDOWN = auto()    # Pen down
+    COLOR = auto();     # Pen color
+    WIDTH = auto();     # Pen width
+    SPEED = auto()      # Speed of the turtle
     
     # Literals
-    NUMBER = auto()  # Numeric values (e.g., 100)
+    NUMBER = auto()     # Numeric values (e.g., 100)
+    STRING = auto()     # Strings like "red"
 
     # Symbols
-    LBRACKET = auto() # [  
-    RBRACKET = auto() # ]  
+    LBRACKET = auto()   # [  
+    RBRACKET = auto()   # ]  
     
     # End of file indicator
     EOF = auto()     
@@ -36,8 +44,15 @@ class Token:
 # Mapping string literals to Token types
 KEYWORDS = {
     "FORWARD": TokenType.FORWARD,
+    "BACKWARD": TokenType.BACKWARD,
     "LEFT": TokenType.LEFT,
+    "RIGHT": TokenType.RIGHT,
     "REPEAT": TokenType.REPEAT,
+    "PENUP": TokenType.PENUP, 
+    "PENDOWN": TokenType.PENDOWN,
+    "COLOR": TokenType.COLOR, 
+    "WIDTH": TokenType.WIDTH, 
+    "SPEED": TokenType.SPEED,
 }
 
 ##########################################
@@ -76,11 +91,14 @@ class Lexer:
                     tokens.append(Token(TokenType.NUMBER, int(value), self.line))
                 
                 case 'WORD':
-                    # Check if the word is a known command
-                    token_type = KEYWORDS.get(value.upper())
-                    if not token_type:
-                        raise LexerError(f"Line {self.line}: Unknown command '{value}'")
-                    tokens.append(Token(token_type, value.upper(), self.line))
+                    word_value = value.upper()
+                    token_type = KEYWORDS.get(word_value)
+    
+                    if token_type:
+                        tokens.append(Token(token_type, word_value, self.line))
+                    else:
+                        tokens.append(Token(TokenType.STRING, word_value, self.line))
+                    
 
                 case 'LBRACKET':
                     tokens.append(Token(TokenType.LBRACKET, "[", self.line))

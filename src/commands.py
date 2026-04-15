@@ -23,3 +23,24 @@ def execute_left(angle: int):
 def finish_graphics():
     """Finish drawning (so window won't close automatically)"""
     turtle.done()
+
+def execute_backward(distance: int): 
+    turtle.backward(distance)
+
+def execute_right(angle: int): 
+    turtle.right(angle)
+
+def execute_penup(): 
+    turtle.penup()
+
+def execute_pendown(): 
+    turtle.pendown()
+
+def execute_color(name: str): 
+    turtle.color(name.lower())
+
+def execute_width(w: int): 
+    turtle.pensize(w)
+
+def execute_speed(s: int): 
+    turtle.speed(s)

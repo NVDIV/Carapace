@@ -15,13 +15,41 @@ class ForwardNode(ASTNode):
     distance: int
 
 @dataclass
+class BackwardNode(ASTNode): 
+    distance: int
+
+@dataclass
 class LeftNode(ASTNode):
+    angle: int
+
+@dataclass
+class RightNode(ASTNode): 
     angle: int
 
 @dataclass
 class RepeatNode(ASTNode):
     times: int
     body: list[ASTNode] # The body contains a list of other nodes (nested statements)
+
+@dataclass
+class PenUpNode(ASTNode): 
+    pass
+
+@dataclass
+class PenDownNode(ASTNode): 
+    pass
+
+@dataclass
+class ColorNode(ASTNode): 
+    color_name: str
+
+@dataclass
+class WidthNode(ASTNode): 
+    size: int
+
+@dataclass
+class SpeedNode(ASTNode): 
+    level: int
 
 ##########################################
 #   PARSER (Recursive Descent)
@@ -63,18 +91,30 @@ class Parser:
 
     # RULE: <Statement> ::= <Command> | <Loop>
     def parse_statement(self) -> ASTNode:
-        """Determines which type of statement to parse based on the current token."""
         token = self.current_token()
-
         match token.type:
-            case TokenType.FORWARD:
+            case TokenType.FORWARD: 
                 return self.parse_forward()
-            case TokenType.LEFT:
+            case TokenType.BACKWARD: 
+                return self.parse_backward()
+            case TokenType.LEFT: 
                 return self.parse_left()
-            case TokenType.REPEAT:
+            case TokenType.RIGHT: 
+                return self.parse_right()
+            case TokenType.PENUP: 
+                return self.consume(TokenType.PENUP) and PenUpNode()
+            case TokenType.PENDOWN: 
+                return self.consume(TokenType.PENDOWN) and PenDownNode()
+            case TokenType.COLOR: 
+                return self.parse_color()
+            case TokenType.WIDTH: 
+                return self.parse_width()
+            case TokenType.SPEED: 
+                return self.parse_speed()
+            case TokenType.REPEAT: 
                 return self.parse_repeat()
-            case _:
-                raise ParserError(f"Line {token.line}: Unexpected token {token.type.name}")
+            case _: 
+                raise ParserError(f"Line {token.line}: Unexpected {token.type.name}")
 
     # RULE: <Command> ::= "FORWARD" NUMBER
     def parse_forward(self) -> ASTNode:
@@ -82,11 +122,23 @@ class Parser:
         number_token = self.consume(TokenType.NUMBER)
         return ForwardNode(distance=number_token.value)
 
+    # RULE: <Command> ::= "BACKWARD" NUMBER
+    def parse_backward(self):
+        self.consume(TokenType.BACKWARD)
+        number_token = self.consume(TokenType.NUMBER)
+        return BackwardNode(distance=number_token.value)
+
     # RULE: <Command> ::= "LEFT" NUMBER
     def parse_left(self) -> ASTNode:
         self.consume(TokenType.LEFT)
         number_token = self.consume(TokenType.NUMBER)
         return LeftNode(angle=number_token.value)
+    
+    # RULE: <Command> ::= "RIGHT" NUMBER
+    def parse_right(self):
+        self.consume(TokenType.RIGHT)
+        number_token = self.consume(TokenType.NUMBER)
+        return RightNode(angle=number_token.value)
 
     # RULE: <Loop> ::= "REPEAT" NUMBER "[" <Statement>* "]"
     def parse_repeat(self) -> ASTNode:
@@ -108,3 +160,21 @@ class Parser:
         self.consume(TokenType.RBRACKET)
 
         return RepeatNode(times=times_token.value, body=body)
+    
+    # RULE: <Command> ::= "COLOR" <Word>
+    def parse_color(self):
+        self.consume(TokenType.COLOR)
+        name_token = self.consume(TokenType.STRING) 
+        return ColorNode(color_name=name_token.value)
+
+    # RULE: <Command> ::= "WIDTH" <Number>
+    def parse_width(self):
+        self.consume(TokenType.WIDTH)
+        number_token = self.consume(TokenType.NUMBER)
+        return WidthNode(size=number_token.value)
+
+    # RULE: <Command> ::= "SPEED" <Number>
+    def parse_speed(self):
+        self.consume(TokenType.SPEED)
+        number_token = self.consume(TokenType.NUMBER)
+        return SpeedNode(level=number_token.value)
