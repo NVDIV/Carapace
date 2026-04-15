@@ -1,4 +1,12 @@
 <Program>   ::= <Statement>* EOF
 <Statement> ::= <Command> | <Loop>
-<Command>   ::= ("FORWARD" | "LEFT") NUMBER
-<Loop>      ::= "REPEAT" NUMBER "[" <Statement>* "]"
+<Command>   ::= "FORWARD" <Number> 
+              | "BACKWARD" <Number> 
+              | "LEFT" <Number> 
+              | "RIGHT" <Number>
+              | "PENUP" 
+              | "PENDOWN"
+              | "COLOR" <Word>
+              | "WIDTH" <Number>
+              | "SPEED" <Number>
+<Loop>      ::= "REPEAT" <Number> "[" <Statement>* "]"
