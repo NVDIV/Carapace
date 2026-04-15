@@ -7,29 +7,45 @@ from src.errors import ParserError
 ##########################################
 
 class ASTNode:
-    """Base class for all AST nodes."""
+    """Base class for all Abstract Syntax Tree nodes."""
     pass
 
 @dataclass
+class LiteralNode(ASTNode):
+    """Represents a constant value (Number or String)."""
+    value: any
+
+@dataclass
+class VariableNode(ASTNode):
+    """Represents a variable reference by its name."""
+    name: str
+
+@dataclass
+class SetNode(ASTNode):
+    """Represents a variable assignment: SET <name> <expression>."""
+    name: str
+    value: ASTNode
+
+@dataclass
 class ForwardNode(ASTNode):
-    distance: int
+    distance: ASTNode
 
 @dataclass
 class BackwardNode(ASTNode): 
-    distance: int
+    distance: ASTNode
 
 @dataclass
 class LeftNode(ASTNode):
-    angle: int
+    angle: ASTNode
 
 @dataclass
 class RightNode(ASTNode): 
-    angle: int
+    angle: ASTNode
 
 @dataclass
 class RepeatNode(ASTNode):
-    times: int
-    body: list[ASTNode] # The body contains a list of other nodes (nested statements)
+    times: ASTNode
+    body: list[ASTNode]
 
 @dataclass
 class PenUpNode(ASTNode): 
@@ -41,33 +57,37 @@ class PenDownNode(ASTNode):
 
 @dataclass
 class ColorNode(ASTNode): 
-    color_name: str
+    color_name: ASTNode
 
 @dataclass
 class WidthNode(ASTNode): 
-    size: int
+    size: ASTNode
 
 @dataclass
 class SpeedNode(ASTNode): 
-    level: int
+    level: ASTNode
 
 ##########################################
 #   PARSER (Recursive Descent)
 ##########################################
 
 class Parser:
+    """
+    Recursive Descent Parser for the Carapace DSL.
+    Converts a stream of tokens into an Abstract Syntax Tree (AST).
+    """
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
-        self.pos = 0 # Current token index
+        self.pos = 0 
 
     def current_token(self) -> Token:
-        """Returns the token at the current position."""
+        """Returns the token at the current parsing position."""
         return self.tokens[self.pos]
 
     def consume(self, expected_type: TokenType) -> Token:
         """
-        Consumes the current token if it matches the expected type.
-        Advances the position pointer. Raises ParserError otherwise.
+        Validates the current token type, advances the position, and returns the token.
+        Raises ParserError if the type does not match.
         """
         token = self.current_token()
         if token.type == expected_type:
@@ -79,102 +99,115 @@ class Parser:
                 f"but got {token.type.name} ('{token.value}')"
             )
 
-    # RULE: <Program> ::= <Statement>* EOF
     def parse(self) -> list[ASTNode]:
-        """Entry point for parsing. Returns the root of the AST (a list of nodes)."""
+        """
+        Entry point: Parses the entire token stream until EOF.
+        Grammar: <Program> ::= <Statement>* EOF
+        """
         statements = []
-        
         while self.current_token().type != TokenType.EOF:
             statements.append(self.parse_statement())
-            
         return statements
 
-    # RULE: <Statement> ::= <Command> | <Loop>
     def parse_statement(self) -> ASTNode:
+        """
+        Determines which type of statement or command to parse.
+        Grammar: <Statement> ::= <Command> | <Loop> | <Assignment>
+        """
         token = self.current_token()
         match token.type:
-            case TokenType.FORWARD: 
-                return self.parse_forward()
-            case TokenType.BACKWARD: 
-                return self.parse_backward()
-            case TokenType.LEFT: 
-                return self.parse_left()
-            case TokenType.RIGHT: 
-                return self.parse_right()
-            case TokenType.PENUP: 
-                return self.consume(TokenType.PENUP) and PenUpNode()
-            case TokenType.PENDOWN: 
-                return self.consume(TokenType.PENDOWN) and PenDownNode()
-            case TokenType.COLOR: 
-                return self.parse_color()
-            case TokenType.WIDTH: 
-                return self.parse_width()
-            case TokenType.SPEED: 
-                return self.parse_speed()
-            case TokenType.REPEAT: 
-                return self.parse_repeat()
-            case _: 
-                raise ParserError(f"Line {token.line}: Unexpected {token.type.name}")
+            case TokenType.SET:      return self.parse_set()
+            case TokenType.FORWARD:  return self.parse_forward()
+            case TokenType.BACKWARD: return self.parse_backward()
+            case TokenType.LEFT:     return self.parse_left()
+            case TokenType.RIGHT:    return self.parse_right()
+            case TokenType.REPEAT:   return self.parse_repeat()
+            case TokenType.COLOR:    return self.parse_color()
+            case TokenType.WIDTH:    return self.parse_width()
+            case TokenType.SPEED:    return self.parse_speed()
+            case TokenType.PENUP:
+                self.consume(TokenType.PENUP)
+                return PenUpNode()
+            case TokenType.PENDOWN:
+                self.consume(TokenType.PENDOWN)
+                return PenDownNode()
+            case _:
+                raise ParserError(f"Line {token.line}: Unexpected token {token.type.name}")
 
-    # RULE: <Command> ::= "FORWARD" NUMBER
+    def parse_expression(self) -> ASTNode:
+        """
+        Parses an operand: a numeric literal, a string literal, or a variable identifier.
+        Grammar: <Expression> ::= NUMBER | STRING | IDENTIFIER
+        """
+        token = self.current_token()
+        if token.type == TokenType.NUMBER:
+            self.consume(TokenType.NUMBER)
+            return LiteralNode(token.value)
+        elif token.type == TokenType.STRING:
+            self.consume(TokenType.STRING)
+            return LiteralNode(token.value)
+        elif token.type == TokenType.IDENTIFIER:
+            self.consume(TokenType.IDENTIFIER)
+            return VariableNode(name=token.value)
+        else:
+            raise ParserError(f"Line {token.line}: Expected Number, String or Identifier, but got {token.type.name}")
+
+    def parse_set(self) -> ASTNode:
+        """Parses variable assignment: SET <name> <value>."""
+        self.consume(TokenType.SET)
+        name_token = self.consume(TokenType.IDENTIFIER)
+        value_node = self.parse_expression()
+        return SetNode(name=name_token.value, value=value_node)
+
     def parse_forward(self) -> ASTNode:
+        """Parses FORWARD command followed by an expression."""
         self.consume(TokenType.FORWARD)
-        number_token = self.consume(TokenType.NUMBER)
-        return ForwardNode(distance=number_token.value)
+        return ForwardNode(distance=self.parse_expression())
 
-    # RULE: <Command> ::= "BACKWARD" NUMBER
-    def parse_backward(self):
+    def parse_backward(self) -> ASTNode:
+        """Parses BACKWARD command followed by an expression."""
         self.consume(TokenType.BACKWARD)
-        number_token = self.consume(TokenType.NUMBER)
-        return BackwardNode(distance=number_token.value)
+        return BackwardNode(distance=self.parse_expression())
 
-    # RULE: <Command> ::= "LEFT" NUMBER
     def parse_left(self) -> ASTNode:
+        """Parses LEFT command followed by an angle expression."""
         self.consume(TokenType.LEFT)
-        number_token = self.consume(TokenType.NUMBER)
-        return LeftNode(angle=number_token.value)
-    
-    # RULE: <Command> ::= "RIGHT" NUMBER
-    def parse_right(self):
-        self.consume(TokenType.RIGHT)
-        number_token = self.consume(TokenType.NUMBER)
-        return RightNode(angle=number_token.value)
+        return LeftNode(angle=self.parse_expression())
 
-    # RULE: <Loop> ::= "REPEAT" NUMBER "[" <Statement>* "]"
+    def parse_right(self) -> ASTNode:
+        """Parses RIGHT command followed by an angle expression."""
+        self.consume(TokenType.RIGHT)
+        return RightNode(angle=self.parse_expression())
+
+    def parse_color(self) -> ASTNode:
+        """Parses COLOR command followed by a string or variable."""
+        self.consume(TokenType.COLOR)
+        return ColorNode(color_name=self.parse_expression())
+
+    def parse_width(self) -> ASTNode:
+        """Parses WIDTH command followed by an expression."""
+        self.consume(TokenType.WIDTH)
+        return WidthNode(size=self.parse_expression())
+
+    def parse_speed(self) -> ASTNode:
+        """Parses SPEED command followed by an expression."""
+        self.consume(TokenType.SPEED)
+        return SpeedNode(level=self.parse_expression())
+
     def parse_repeat(self) -> ASTNode:
-        # Parse loop header
+        """
+        Parses a REPEAT loop. 
+        Grammar: REPEAT <expression> "[" <statement>* "]"
+        """
         self.consume(TokenType.REPEAT)
-        times_token = self.consume(TokenType.NUMBER)
+        times_expr = self.parse_expression()
         self.consume(TokenType.LBRACKET)
 
-        # Parse loop body
         body = []
         while self.current_token().type != TokenType.RBRACKET:
             if self.current_token().type == TokenType.EOF:
-                raise ParserError(f"Line {times_token.line}: Missing closing ']' for REPEAT block")
-            
-            # Recursion: statements inside the loop
+                raise ParserError("Unclosed REPEAT block: missing ']'")
             body.append(self.parse_statement())
 
-        # 3. Consume closing bracket
         self.consume(TokenType.RBRACKET)
-
-        return RepeatNode(times=times_token.value, body=body)
-    
-    # RULE: <Command> ::= "COLOR" <Word>
-    def parse_color(self):
-        self.consume(TokenType.COLOR)
-        name_token = self.consume(TokenType.STRING) 
-        return ColorNode(color_name=name_token.value)
-
-    # RULE: <Command> ::= "WIDTH" <Number>
-    def parse_width(self):
-        self.consume(TokenType.WIDTH)
-        number_token = self.consume(TokenType.NUMBER)
-        return WidthNode(size=number_token.value)
-
-    # RULE: <Command> ::= "SPEED" <Number>
-    def parse_speed(self):
-        self.consume(TokenType.SPEED)
-        number_token = self.consume(TokenType.NUMBER)
-        return SpeedNode(level=number_token.value)
+        return RepeatNode(times=times_expr, body=body) 

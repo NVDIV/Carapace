@@ -1,0 +1,6 @@
+SET step 50
+SET iterations 4
+REPEAT iterations [
+  FORWARD step
+  LEFT 90
+]
