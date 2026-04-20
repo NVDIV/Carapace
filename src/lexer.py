@@ -20,7 +20,7 @@ class TokenType(Enum):
     WIDTH = auto();     # Pen width
     SPEED = auto()      # Speed of the turtle
     SET = auto()        # Variable declaration
-    
+
     # Numbers and literals
     NUMBER = auto()     # Numeric values (e.g., 100)
     STRING = auto()     # Strings like "red"
@@ -29,6 +29,12 @@ class TokenType(Enum):
     # Symbols
     LBRACKET = auto()   # [  
     RBRACKET = auto()   # ]  
+    PLUS = auto()       # +
+    MINUS = auto()      # -
+    MULTIPLY = auto()        # *
+    DIVIDE = auto()        # /
+    LPAREN = auto()     # (
+    RPAREN = auto()     # )
     
     # End of file indicator
     EOF = auto()     
@@ -77,7 +83,13 @@ class Lexer:
             ('STRING',   r'"[^"]*"'),       # Strings (in " ")
             ('NEWLINE',  r'\n'),            # Line breaks
             ('LBRACKET', r'\['),            # Left bracket
-            ('RBRACKET', r'\]'),            # Rught bracket
+            ('RBRACKET', r'\]'),            # Right bracket
+            ('PLUS', r'\+'),                # Plus
+            ('MINUS', r'-'),                # Minus
+            ('MUL', r'\*'),                 # Multiplification
+            ('DIV', r'/'),                  # Dividing
+            ('LPAREN', r'\('),              # Left Parent
+            ('RPAREN', r'\)'),              # Right Parent
             ('SKIP',     r'[ \t]+'),        # Spaces and tabs
             ('MISMATCH', r'.'),             # Any other character (error)
         ]
@@ -112,6 +124,19 @@ class Lexer:
 
                 case 'RBRACKET':
                     tokens.append(Token(TokenType.RBRACKET, "]", self.line))
+
+                case 'PLUS':
+                    tokens.append(Token(TokenType.PLUS, "+", self.line))
+                case 'MINUS':
+                    tokens.append(Token(TokenType.MINUS, "-", self.line))
+                case 'MUL':
+                    tokens.append(Token(TokenType.MULTIPLY, "*", self.line))
+                case 'DIV':
+                    tokens.append(Token(TokenType.DIVIDE, "/", self.line))
+                case 'LPAREN':
+                    tokens.append(Token(TokenType.LPAREN, "(", self.line))
+                case 'RPAREN':
+                    tokens.append(Token(TokenType.RPAREN, ")", self.line))
                 
                 case 'NEWLINE':
                     self.line += 1

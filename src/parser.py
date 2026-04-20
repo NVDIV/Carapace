@@ -27,6 +27,13 @@ class SetNode(ASTNode):
     value: ASTNode
 
 @dataclass
+class BinOpNode(ASTNode):
+    """Represents binary operation (+, -, *, /)"""
+    left: ASTNode
+    op: TokenType
+    right: ASTNode
+
+@dataclass
 class ForwardNode(ASTNode):
     distance: ASTNode
 
@@ -135,22 +142,40 @@ class Parser:
                 raise ParserError(f"Line {token.line}: Unexpected token {token.type.name}")
 
     def parse_expression(self) -> ASTNode:
-        """
-        Parses an operand: a numeric literal, a string literal, or a variable identifier.
-        Grammar: <Expression> ::= NUMBER | STRING | IDENTIFIER
-        """
+        """Handles Addition and Subtraction (Lowest precedence)."""
+        node = self.parse_term()
+        
+        while self.current_token().type in (TokenType.PLUS, TokenType.MINUS):
+            op = self.consume(self.current_token().type).type
+            node = BinOpNode(left=node, op=op, right=self.parse_term())
+        return node
+
+    def parse_term(self) -> ASTNode:
+        """Handles Multiplication and Division (Higher precedence)."""
+        node = self.parse_factor()
+        
+        while self.current_token().type in (TokenType.MULTIPLY, TokenType.DIVIDE):
+            op = self.consume(self.current_token().type).type
+            node = BinOpNode(left=node, op=op, right=self.parse_factor())
+        return node
+
+    def parse_factor(self) -> ASTNode:
+        """Handles Literals, Variables, and Parentheses (Highest precedence)."""
         token = self.current_token()
+        
         if token.type == TokenType.NUMBER:
             self.consume(TokenType.NUMBER)
-            return LiteralNode(token.value)
-        elif token.type == TokenType.STRING:
-            self.consume(TokenType.STRING)
             return LiteralNode(token.value)
         elif token.type == TokenType.IDENTIFIER:
             self.consume(TokenType.IDENTIFIER)
             return VariableNode(name=token.value)
+        elif token.type == TokenType.LPAREN:
+            self.consume(TokenType.LPAREN)
+            node = self.parse_expression()
+            self.consume(TokenType.RPAREN)
+            return node
         else:
-            raise ParserError(f"Line {token.line}: Expected Number, String or Identifier, but got {token.type.name}")
+            raise ParserError(f"Line {token.line}: Unexpected token {token.type.name} in expression")
 
     def parse_set(self) -> ASTNode:
         """Parses variable assignment: SET <name> <value>."""

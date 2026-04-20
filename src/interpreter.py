@@ -1,7 +1,8 @@
+from src.lexer import TokenType
 from src.parser import (
     ASTNode, ForwardNode, LeftNode, RepeatNode, BackwardNode, 
     RightNode, PenUpNode, PenDownNode, ColorNode, WidthNode, 
-    SpeedNode, SetNode, LiteralNode, VariableNode
+    SpeedNode, SetNode, LiteralNode, VariableNode, BinOpNode
 )
 import src.commands as commands
 from src.errors import RuntimeError
@@ -42,17 +43,24 @@ class Interpreter:
             commands.finish_graphics()
 
     def evaluate(self, node: ASTNode) -> any:
-        """
-        Evaluates an expression node to return a concrete value.
-        """
-        match node:
-            case LiteralNode(value=v):
-                return v
-            case VariableNode(name=n):
-                return self.env.get(n)
-            case _:
-                # If it's already a value, return it (fallback)
-                return node
+            match node:
+                case LiteralNode(value=v):
+                    return v
+                case VariableNode(name=n):
+                    return self.env.get(n)
+                case BinOpNode(left=l, op=op, right=r):
+                    left_val = self.evaluate(l)
+                    right_val = self.evaluate(r)
+                    
+                    # Perform the operation based on the token type
+                    if op == TokenType.PLUS: return left_val + right_val
+                    if op == TokenType.MINUS: return left_val - right_val
+                    if op == TokenType.MULTIPLY: return left_val * right_val
+                    if op == TokenType.DIVIDE: return left_val / right_val
+                    
+                    raise RuntimeError(f"Unknown operator: {op}")
+                case _:
+                    return node
 
     def execute(self, node: ASTNode):
         """Executes a single AST node by resolving expressions and calling commands."""
