@@ -1,12 +1,20 @@
-<Program>   ::= <Statement>* EOF
-<Statement> ::= <Command> | <Loop>
-<Command>   ::= "FORWARD" <Number> 
-              | "BACKWARD" <Number> 
-              | "LEFT" <Number> 
-              | "RIGHT" <Number>
-              | "PENUP" 
-              | "PENDOWN"
-              | "COLOR" <Word>
-              | "WIDTH" <Number>
-              | "SPEED" <Number>
-<Loop>      ::= "REPEAT" <Number> "[" <Statement>* "]"
+<Program>      ::= <Statement>* EOF
+<Statement>    ::= <Command> | <Loop> | <Assignment>
+
+<Assignment>   ::= "SET" <Identifier> <Expression>
+
+<Command>      ::= "FORWARD" <Expression>
+                 | "BACKWARD" <Expression>
+                 | "LEFT" <Expression>
+                 | "RIGHT" <Expression>
+                 | "PENUP" 
+                 | "PENDOWN"
+                 | "COLOR" <Expression>
+                 | "WIDTH" <Expression>
+                 | "SPEED" <Expression>
+
+<Loop>         ::= "REPEAT" <Expression> "[" <Statement>* "]"
+
+<Expression>   ::= <Term> (('+' | '-') <Term>)*
+<Term>         ::= <Factor> (('*' | '/') <Factor>)*
+<Factor>       ::= <Number> | <Identifier> | "(" <Expression> ")"
