@@ -20,6 +20,8 @@ class TokenType(Enum):
     WIDTH = auto();     # Pen width
     SPEED = auto()      # Speed of the turtle
     SET = auto()        # Variable declaration
+    IF = auto()
+
 
     # Numbers and literals
     NUMBER = auto()     # Numeric values (e.g., 100)
@@ -35,6 +37,9 @@ class TokenType(Enum):
     DIVIDE = auto()        # /
     LPAREN = auto()     # (
     RPAREN = auto()     # )
+    EQ = auto() # ==
+    LT = auto() # <
+    GT = auto() # >
     
     # End of file indicator
     EOF = auto()     
@@ -56,6 +61,7 @@ KEYWORDS = {
     "LEFT": TokenType.LEFT,
     "RIGHT": TokenType.RIGHT,
     "REPEAT": TokenType.REPEAT,
+    "IF": TokenType.IF,
     "PENUP": TokenType.PENUP, 
     "PENDOWN": TokenType.PENDOWN,
     "COLOR": TokenType.COLOR, 
@@ -90,6 +96,9 @@ class Lexer:
             ('DIV', r'/'),                  # Dividing
             ('LPAREN', r'\('),              # Left Parent
             ('RPAREN', r'\)'),              # Right Parent
+            ('EQ', r'=='), 
+            ('LT', r'<'),
+            ('GT', r'>'), 
             ('SKIP',     r'[ \t]+'),        # Spaces and tabs
             ('MISMATCH', r'.'),             # Any other character (error)
         ]
@@ -138,6 +147,13 @@ class Lexer:
                 case 'RPAREN':
                     tokens.append(Token(TokenType.RPAREN, ")", self.line))
                 
+                case 'EQ':
+                    tokens.append(Token(TokenType.EQ, "==", self.line))
+                case 'LT':
+                    tokens.append(Token(TokenType.LT, "<", self.line))
+                case 'GT':
+                    tokens.append(Token(TokenType.GT, ">", self.line))
+
                 case 'NEWLINE':
                     self.line += 1
                 
