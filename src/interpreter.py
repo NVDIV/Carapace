@@ -1,6 +1,6 @@
 from src.lexer import TokenType
 from src.parser import (
-    ASTNode, ForwardNode, LeftNode, RepeatNode, BackwardNode, 
+    ASTNode, ForwardNode, IfNode, LeftNode, RepeatNode, BackwardNode, 
     RightNode, PenUpNode, PenDownNode, ColorNode, WidthNode, 
     SpeedNode, SetNode, LiteralNode, VariableNode, BinOpNode
 )
@@ -92,6 +92,19 @@ class Interpreter:
                 for _ in range(count):
                     for child_node in b:
                         self.execute(child_node)
+
+            case IfNode(left, op, right, body):
+                l_val = self.evaluate(left)
+                r_val = self.evaluate(right)
+                
+                condition = False
+                if op == TokenType.EQ: condition = (l_val == r_val)
+                elif op == TokenType.LT: condition = (l_val < r_val)
+                elif op == TokenType.GT: condition = (l_val > r_val)
+                
+                if condition:
+                    for child in body:
+                        self.execute(child)
 
             case ColorNode(color_name=c): 
                 val = self.evaluate(c)

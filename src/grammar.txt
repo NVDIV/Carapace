@@ -1,5 +1,8 @@
 <Program>      ::= <Statement>* EOF
-<Statement>    ::= <Command> | <Loop> | <Assignment>
+<Statement>    ::= <Command> | <Loop> | <Assignment> | <IfStatement>
+
+<IfStatement>  ::= "IF" <Expression> <ComparisonOp> <Expression> "[" <Statement>* "]"
+<ComparisonOp> ::= "==" | "<" | ">"
 
 <Assignment>   ::= "SET" <Identifier> <Expression>
 

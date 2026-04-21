@@ -1,0 +1,12 @@
+SET distance 100
+SET threshold 50
+
+IF distance > threshold [
+    COLOR "BLUE"
+    FORWARD distance
+]
+
+IF distance == 100 [
+    RIGHT 90
+    FORWARD 50
+]

@@ -55,6 +55,13 @@ class RepeatNode(ASTNode):
     body: list[ASTNode]
 
 @dataclass
+class IfNode(ASTNode):
+    left: ASTNode
+    op: TokenType # EQ, LT, GT
+    right: ASTNode
+    body: list[ASTNode]
+
+@dataclass
 class PenUpNode(ASTNode): 
     pass
 
@@ -129,6 +136,7 @@ class Parser:
             case TokenType.LEFT:     return self.parse_left()
             case TokenType.RIGHT:    return self.parse_right()
             case TokenType.REPEAT:   return self.parse_repeat()
+            case TokenType.IF:  return self.parse_if()
             case TokenType.COLOR:    return self.parse_color()
             case TokenType.WIDTH:    return self.parse_width()
             case TokenType.SPEED:    return self.parse_speed()
@@ -165,6 +173,9 @@ class Parser:
         
         if token.type == TokenType.NUMBER:
             self.consume(TokenType.NUMBER)
+            return LiteralNode(token.value)
+        elif token.type == TokenType.STRING: # ADD THIS
+            self.consume(TokenType.STRING)
             return LiteralNode(token.value)
         elif token.type == TokenType.IDENTIFIER:
             self.consume(TokenType.IDENTIFIER)
@@ -236,3 +247,30 @@ class Parser:
 
         self.consume(TokenType.RBRACKET)
         return RepeatNode(times=times_expr, body=body) 
+    
+    def parse_if(self) -> ASTNode:
+            self.consume(TokenType.IF)
+
+            # Parse the left side as a simple factor or expression
+            left = self.parse_expression() 
+
+            # Get the operator
+            op_type = self.current_token().type
+
+            # Validate and consume
+            if op_type not in (TokenType.EQ, TokenType.LT, TokenType.GT):
+                raise ParserError(f"Line {self.current_token().line}: Expected ==, <, or >, but got {op_type.name}")
+            self.consume(op_type)
+
+            # Parse the right side
+            right = self.parse_expression()
+            
+            self.consume(TokenType.LBRACKET)
+            body = []
+            while self.current_token().type != TokenType.RBRACKET:
+                if self.current_token().type == TokenType.EOF:
+                    raise ParserError("Unclosed IF block: missing ']'")
+                body.append(self.parse_statement())
+            self.consume(TokenType.RBRACKET)
+            
+            return IfNode(left=left, op=op_type, right=right, body=body)
