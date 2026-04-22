@@ -1,5 +1,7 @@
-import argparse
 import sys
+
+import argparse
+
 from pathlib import Path
 
 from src.lexer import Lexer

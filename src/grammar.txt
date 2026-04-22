@@ -1,7 +1,21 @@
 <Program>      ::= <Statement>* EOF
-<Statement>    ::= <Command> | <Loop> | <Assignment> | <IfStatement>
+
+<Statement>    ::= <Command> 
+                 | <Loop> 
+                 | <Assignment> 
+                 | <IfStatement> 
+                 | <FunctionDef> 
+                 | <FunctionCall> 
+                 | <ReturnStatement>
+
+<FunctionDef>  ::= "FUNC" <Identifier> <Identifier>* "[" <Statement>* "]"
+
+<FunctionCall> ::= "CALL" <Identifier> <Expression>*
+
+<ReturnStatement> ::= "RETURN" <Expression>
 
 <IfStatement>  ::= "IF" <Expression> <ComparisonOp> <Expression> "[" <Statement>* "]"
+
 <ComparisonOp> ::= "==" | "<" | ">"
 
 <Assignment>   ::= "SET" <Identifier> <Expression>
@@ -19,5 +33,10 @@
 <Loop>         ::= "REPEAT" <Expression> "[" <Statement>* "]"
 
 <Expression>   ::= <Term> (('+' | '-') <Term>)*
+
 <Term>         ::= <Factor> (('*' | '/') <Factor>)*
-<Factor>       ::= <Number> | <Identifier> | "(" <Expression> ")"
+
+<Factor>       ::= <Number> 
+                 | <String>
+                 | <Identifier> 
+                 | <FunctionCall>
