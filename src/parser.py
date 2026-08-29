@@ -81,6 +81,21 @@ class WidthNode(ASTNode):
 class SpeedNode(ASTNode): 
     level: ASTNode
 
+@dataclass
+class FunctionDefNode(ASTNode):
+    name: str
+    params: list[str]  # Lista nazw params, np. ['size', 'color']
+    body: list[ASTNode]
+
+@dataclass
+class FunctionCallNode(ASTNode):
+    name: str
+    args: list[ASTNode] # Lista wyrażeń do obliczenia, np. [LiteralNode(100), VariableNode('x')]
+
+@dataclass
+class ReturnNode(ASTNode):
+    value: ASTNode  # Wyrażenie, które ma zostać zwrócone
+
 ##########################################
 #   PARSER (Recursive Descent)
 ##########################################
@@ -140,6 +155,9 @@ class Parser:
             case TokenType.COLOR:    return self.parse_color()
             case TokenType.WIDTH:    return self.parse_width()
             case TokenType.SPEED:    return self.parse_speed()
+            case TokenType.FUNC: return self.parse_function()
+            case TokenType.CALL: return self.parse_call()
+            case TokenType.RETURN: return self.parse_return()
             case TokenType.PENUP:
                 self.consume(TokenType.PENUP)
                 return PenUpNode()
@@ -174,7 +192,7 @@ class Parser:
         if token.type == TokenType.NUMBER:
             self.consume(TokenType.NUMBER)
             return LiteralNode(token.value)
-        elif token.type == TokenType.STRING: # ADD THIS
+        elif token.type == TokenType.STRING:
             self.consume(TokenType.STRING)
             return LiteralNode(token.value)
         elif token.type == TokenType.IDENTIFIER:
@@ -185,6 +203,8 @@ class Parser:
             node = self.parse_expression()
             self.consume(TokenType.RPAREN)
             return node
+        elif token.type == TokenType.CALL:
+            return self.parse_call() # Parser teraz traktuje wywołanie funkcji jako "liczbę"
         else:
             raise ParserError(f"Line {token.line}: Unexpected token {token.type.name} in expression")
 
@@ -274,3 +294,39 @@ class Parser:
             self.consume(TokenType.RBRACKET)
             
             return IfNode(left=left, op=op_type, right=right, body=body)
+    
+    def parse_function(self) -> ASTNode:
+        self.consume(TokenType.FUNC)
+        name = self.consume(TokenType.IDENTIFIER).value
+        
+        params = []
+        # Czytamy parametry tak długo, aż nie napotkamy lewego nawiasu kwadratowego
+        while self.current_token().type == TokenType.IDENTIFIER:
+            params.append(self.consume(TokenType.IDENTIFIER).value)
+        
+        self.consume(TokenType.LBRACKET)
+        body = []
+        while self.current_token().type != TokenType.RBRACKET:
+            body.append(self.parse_statement())
+        self.consume(TokenType.RBRACKET)
+        
+        return FunctionDefNode(name=name, params=params, body=body)
+
+    def parse_call(self) -> ASTNode:
+        self.consume(TokenType.CALL)
+        name = self.consume(TokenType.IDENTIFIER).value
+    
+        args = []
+        # Tutaj mamy wybór: albo czytamy argumenty do końca linii, 
+        # albo (bezpieczniej) wymagamy ich w nawiasach lub czytamy określoną liczbę.
+        # Na razie czytajmy wyrażenia dopóki się da (uproszczone):
+        while self.current_token().type in (TokenType.NUMBER, TokenType.STRING, TokenType.IDENTIFIER, TokenType.LPAREN):
+            args.append(self.parse_expression())
+            
+        return FunctionCallNode(name=name, args=args)
+
+    # Parser method
+    def parse_return(self) -> ASTNode:
+        self.consume(TokenType.RETURN) # Musisz dodać RETURN do TokenType!
+        value = self.parse_expression()
+        return ReturnNode(value=value)

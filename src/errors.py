@@ -17,3 +17,7 @@ class ParserError(CarapaceError):
 class RuntimeError(CarapaceError):
     """Error while drawning"""
     pass
+
+class ReturnSignal(Exception):
+    def __init__(self, value):
+        self.value = value

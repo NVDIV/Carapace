@@ -1,6 +1,8 @@
 import re
+
 from dataclasses import dataclass
 from enum import Enum, auto
+
 from src.errors import LexerError
 
 ##########################################
@@ -9,18 +11,22 @@ from src.errors import LexerError
 
 class TokenType(Enum):
     # Keywords
+    FUNC = auto()
+    CALL = auto()
+    RETURN = auto()
+    IF = auto()
+    SET = auto()        # Variable declaration
+    REPEAT = auto()     # Instruction Cycle
     FORWARD = auto()    # Move forward
     BACKWARD = auto()   # Move backward
     LEFT = auto()       # Turn left
     RIGHT = auto()      # Turn right
-    REPEAT = auto()     # Instruction Cycle
     PENUP = auto();     # Pen up
     PENDOWN = auto()    # Pen down
     COLOR = auto();     # Pen color
     WIDTH = auto();     # Pen width
     SPEED = auto()      # Speed of the turtle
-    SET = auto()        # Variable declaration
-    IF = auto()
+    
 
 
     # Numbers and literals
@@ -68,6 +74,9 @@ KEYWORDS = {
     "WIDTH": TokenType.WIDTH, 
     "SPEED": TokenType.SPEED,
     "SET": TokenType.SET,
+    "FUNC": TokenType.FUNC,
+    "CALL": TokenType.CALL,
+    "RETURN": TokenType.RETURN,
 }
 
 ##########################################
