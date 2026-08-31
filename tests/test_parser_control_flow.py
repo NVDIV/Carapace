@@ -1,18 +1,12 @@
 import pytest
 
-from src.lexer import TokenType
-from src.parser import (
-    LiteralNode,
-    VariableNode,
-    BinOpNode,
-    ForwardNode,
-    RightNode,
-    RepeatNode,
-    IfNode,
+from Carapace.src.lexer import TokenType
+from Carapace.src.ast import (
+    LiteralNode, VariableNode, BinOpNode, ForwardNode, RightNode, RepeatNode, IfNode,
 )
-from src.errors import ParserError
+from Carapace.src.errors import ParserError
 
-from tests.conftest import parse, parse_one
+from Carapace.tests.conftest import parse, parse_one
 
 
 # ===========================================================================
@@ -443,3 +437,20 @@ def test_if_rejects_unclosed_block():
                 FORWARD 100
             """
         )
+
+def test_unclosed_repeat_error_contains_opening_line():
+    """An unclosed REPEAT reports the source line where the block started."""
+    with pytest.raises(ParserError, match=r"Line 2: Unclosed REPEAT"):
+        parse("""
+REPEAT 2 [
+    FORWARD 10
+""")
+
+
+def test_unclosed_if_error_contains_opening_line():
+    """An unclosed IF reports the source line where the block started."""
+    with pytest.raises(ParserError, match=r"Line 2: Unclosed IF"):
+        parse("""
+IF 1 == 1 [
+    FORWARD 10
+""")

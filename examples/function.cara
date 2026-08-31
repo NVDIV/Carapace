@@ -1,15 +1,20 @@
 SET x 10
+
 FUNC my_func [
     SET x 50
     FORWARD x
 ]
+
 CALL my_func
 RIGHT 90
 FORWARD x
 
 FUNC square size col [
     COLOR col
-    REPEAT 4 [ FORWARD size RIGHT 90 ]
+    REPEAT 4 [
+        FORWARD size
+        RIGHT 90
+    ]
 ]
 
 CALL square 50 "red"

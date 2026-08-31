@@ -1,11 +1,11 @@
 <Program>      ::= <Statement>* EOF
 
-<Statement>    ::= <Command> 
-                 | <Loop> 
-                 | <Assignment> 
-                 | <IfStatement> 
-                 | <FunctionDef> 
-                 | <FunctionCall> 
+<Statement>    ::= <Command>
+                 | <Loop>
+                 | <Assignment>
+                 | <IfStatement>
+                 | <FunctionDef>
+                 | <FunctionCall>
                  | <ReturnStatement>
 
 <FunctionDef>  ::= "FUNC" <Identifier> <Identifier>* "[" <Statement>* "]"
@@ -24,7 +24,7 @@
                  | "BACKWARD" <Expression>
                  | "LEFT" <Expression>
                  | "RIGHT" <Expression>
-                 | "PENUP" 
+                 | "PENUP"
                  | "PENDOWN"
                  | "COLOR" <Expression>
                  | "WIDTH" <Expression>
@@ -36,7 +36,8 @@
 
 <Term>         ::= <Factor> (('*' | '/') <Factor>)*
 
-<Factor>       ::= <Number> 
+<Factor>       ::= <Number>
                  | <String>
-                 | <Identifier> 
+                 | <Identifier>
+                 | "(" <Expression> ")"
                  | <FunctionCall>

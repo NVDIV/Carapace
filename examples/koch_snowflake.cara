@@ -1,0 +1,24 @@
+COLOR "DODGERBLUE"
+WIDTH 2
+SPEED 0
+
+FUNC koch size [
+    IF size < 10 [
+        FORWARD size
+    ]
+
+    IF size > 9 [
+        CALL koch size / 3
+        LEFT 60
+        CALL koch size / 3
+        RIGHT 120
+        CALL koch size / 3
+        LEFT 60
+        CALL koch size / 3
+    ]
+]
+
+REPEAT 3 [
+    CALL koch 243
+    RIGHT 120
+]

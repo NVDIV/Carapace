@@ -1,192 +1,342 @@
-from src.lexer import TokenType
-from src.parser import (
-    ASTNode, ForwardNode, IfNode, LeftNode, RepeatNode, BackwardNode, 
-    RightNode, PenUpNode, PenDownNode, ColorNode, WidthNode, 
-    SpeedNode, SetNode, LiteralNode, VariableNode, BinOpNode, FunctionDefNode, FunctionCallNode, ReturnNode
+"""Runtime interpreter for semantically validated Carapace programs."""
+
+from __future__ import annotations
+
+from numbers import Real
+
+import Carapace.src.commands as commands
+from Carapace.src.ast import (
+    ASTNode,
+    BackwardNode,
+    BinOpNode,
+    ColorNode,
+    ForwardNode,
+    FunctionCallNode,
+    FunctionDefNode,
+    IfNode,
+    LeftNode,
+    LiteralNode,
+    PenDownNode,
+    PenUpNode,
+    RepeatNode,
+    ReturnNode,
+    RightNode,
+    SetNode,
+    SpeedNode,
+    VariableNode,
+    WidthNode,
 )
-import src.commands as commands
-from src.errors import RuntimeError, ReturnSignal
+from Carapace.src.environment import FunctionEnvironment, GlobalEnvironment
+from Carapace.src.errors import ReturnSignal, RuntimeError
+from Carapace.src.lexer import TokenType
 
-class Environment:
-    """
-    Stores variable names and their corresponding values.
-    """
-    def __init__(self, parent=None):
-        self.variables = {}
-        self.functions = {}  # Funkcje zazwyczaj zostawiamy globalne lub w zasięgu leksykalnym
-        self.parent = parent
 
-    def set(self, name: str, value: any):
-        """Definiuje zmienną w BIEŻĄCYM zasięgu (zawsze lokalnie)."""
-        self.variables[name] = value
+_NO_RETURN = object()
 
-    def get(self, name: str):
-        """Szuka zmiennej w bieżącym zasięgu, a jeśli nie znajdzie - u rodzica."""
-        if name in self.variables:
-            return self.variables[name]
-        if self.parent:
-            return self.parent.get(name)
-        raise RuntimeError(f"Undefined variable: '{name}'")
 
-    def define_function(self, node: FunctionDefNode):
-        # Zapisujemy cały węzeł, bo on ma w sobie i nazwę, i parametry, i body
-        self.functions[node.name] = node
-
-    def get_function(self, name: str) -> FunctionDefNode:
-        if name in self.functions:
-            return self.functions[name]
-        if self.parent:
-            return self.parent.get_function(name)
-        raise RuntimeError(f"Undefined function: '{name}'")
-    
 class Interpreter:
-    """
-    Executes the Abstract Syntax Tree (AST) by mapping nodes to turtle commands.
-    """
-    def __init__(self, tree: list[ASTNode]):
+    """Execute a Carapace AST using explicit global and function environments."""
+
+    def __init__(self, tree: list[ASTNode], semantic_result):
+        """Initialize runtime state from a validated AST and semantic result."""
         self.tree = tree
-        # Tworzymy środowisko globalne
-        self.global_env = Environment()
-        # env to nasze "bieżące" środowisko (na początku globalne)
+        self.semantic_result = semantic_result
+        self.global_env = GlobalEnvironment()
         self.env = self.global_env
 
+        # Semantic analysis has already validated and collected every global
+        # function, so runtime registration is independent of source order.
+        for name, symbol in semantic_result.functions.items():
+            self.global_env.define_function(name, symbol.node)
+
+    # ===================================================================
+    # Program execution
+    # ===================================================================
+
     def run(self):
-        """Main execution loop. Initializes graphics and traverses root nodes."""
+        """Execute the program and preserve execution errors during cleanup."""
         commands.init_graphics()
         try:
             for node in self.tree:
+                # Declarations were registered before execution.
+                if isinstance(node, FunctionDefNode):
+                    continue
                 self.execute(node)
-        finally:
-            # Ensures graphics window stays open or closes properly even on error
+        except Exception:
+            # Cleanup must never replace the original language/runtime error.
+            try:
+                commands.finish_graphics()
+            except Exception:
+                pass
+            raise
+        else:
+            # With no primary error, a backend finalization failure remains an
+            # internal/system failure and is allowed to propagate.
             commands.finish_graphics()
 
-    def evaluate(self, node: ASTNode) -> any:
-            match node:
-                case LiteralNode(value=v):
-                    return v
-                case VariableNode(name=n):
-                    return self.env.get(n)
-                case BinOpNode(left=l, op=op, right=r):
-                    left_val = self.evaluate(l)
-                    right_val = self.evaluate(r)
-                    
-                    # Perform the operation based on the token type
-                    if op == TokenType.PLUS: return left_val + right_val
-                    if op == TokenType.MINUS: return left_val - right_val
-                    if op == TokenType.MULTIPLY: return left_val * right_val
-                    if op == TokenType.DIVIDE: return left_val / right_val
-                    
-                    raise RuntimeError(f"Unknown operator: {op}")
-                case FunctionCallNode(name=n, args=args):
-                    # Funkcja wywołana jako część wyrażenia! 
-                    # Musimy ją "wykonać", aby dostać jej wynik.
-                    return self.execute(node) 
-            
-                case _:
-                    return node
+    # ===================================================================
+    # Expression evaluation
+    # ===================================================================
+
+    def evaluate(self, node: ASTNode):
+        """Evaluate an expression and return its runtime value."""
+        match node:
+            case LiteralNode(value=value):
+                return value
+
+            case VariableNode(name=name):
+                try:
+                    return self.env.get_variable(name)
+                except RuntimeError as exc:
+                    self._raise_runtime(node, str(exc))
+
+            case BinOpNode(left=left, op=op, right=right):
+                left_value = self.evaluate(left)
+                right_value = self.evaluate(right)
+                self._require_number(left_value, node, "Arithmetic operand")
+                self._require_number(right_value, node, "Arithmetic operand")
+
+                if op == TokenType.PLUS:
+                    return left_value + right_value
+                if op == TokenType.MINUS:
+                    return left_value - right_value
+                if op == TokenType.MULTIPLY:
+                    return left_value * right_value
+                if op == TokenType.DIVIDE:
+                    if right_value == 0:
+                        self._raise_runtime(node, "Division by zero")
+                    return left_value / right_value
+
+                self._raise_runtime(node, f"Unknown arithmetic operator: {op.name}")
+
+            case FunctionCallNode(name=name, args=arguments):
+                return self.execute_function_call(
+                    function_name=name,
+                    arguments=arguments,
+                    value_required=True,
+                    call_node=node,
+                )
+
+            case _:
+                self._raise_runtime(
+                    node,
+                    f"Node {type(node).__name__} cannot be evaluated as an expression",
+                )
+
+    # ===================================================================
+    # Statement execution
+    # ===================================================================
 
     def execute(self, node: ASTNode):
-        """Executes a single AST node by resolving expressions and calling commands."""
+        """Execute one statement node."""
         match node:
-            case SetNode(name=n, value=v):
-                # Resolve the expression and save it to the environment
-                val = self.evaluate(v)
-                self.env.set(n, val)
+            case SetNode(name=name, value=value):
+                self.env.set_variable(name, self.evaluate(value))
 
-            case ForwardNode(distance=d):
-                val = self.evaluate(d)
-                commands.execute_forward(val)
+            case ForwardNode(distance=distance):
+                value = self.evaluate(distance)
+                self._require_number(value, node, "FORWARD")
+                self._execute_command(commands.execute_forward, value, node=node)
 
-            case BackwardNode(distance=d): 
-                val = self.evaluate(d)
-                commands.execute_backward(val)
+            case BackwardNode(distance=distance):
+                value = self.evaluate(distance)
+                self._require_number(value, node, "BACKWARD")
+                self._execute_command(commands.execute_backward, value, node=node)
 
-            case LeftNode(angle=a):
-                val = self.evaluate(a)
-                commands.execute_left(val)
+            case LeftNode(angle=angle):
+                value = self.evaluate(angle)
+                self._require_number(value, node, "LEFT")
+                self._execute_command(commands.execute_left, value, node=node)
 
-            case RightNode(angle=a): 
-                val = self.evaluate(a)
-                commands.execute_right(val)
+            case RightNode(angle=angle):
+                value = self.evaluate(angle)
+                self._require_number(value, node, "RIGHT")
+                self._execute_command(commands.execute_right, value, node=node)
 
-            case RepeatNode(times=t, body=b):
-                # Resolve how many times to loop
-                count = int(self.evaluate(t))
+            case RepeatNode(times=times, body=body):
+                count = self.evaluate(times)
+                self._require_repeat_count(count, node)
                 for _ in range(count):
-                    for child_node in b:
-                        self.execute(child_node)
-
-            case IfNode(left, op, right, body):
-                l_val = self.evaluate(left)
-                r_val = self.evaluate(right)
-                
-                condition = False
-                if op == TokenType.EQ: condition = (l_val == r_val)
-                elif op == TokenType.LT: condition = (l_val < r_val)
-                elif op == TokenType.GT: condition = (l_val > r_val)
-                
-                if condition:
                     for child in body:
                         self.execute(child)
 
-            case ColorNode(color_name=c): 
-                val = self.evaluate(c)
-                commands.execute_color(val)
-
-            case WidthNode(size=w): 
-                val = self.evaluate(w)
-                commands.execute_width(val)
-
-            case SpeedNode(level=s): 
-                val = self.evaluate(s)
-                commands.execute_speed(val)
-
-            case PenUpNode(): 
-                commands.execute_penup()
-
-            case PenDownNode(): 
-                commands.execute_pendown()
-
-            case FunctionDefNode(name=n, params=p, body=b):
-                # Po prostu rejestrujemy cały węzeł w środowisku
-                self.env.define_function(node)
-
-            case FunctionCallNode(name=n, args=arguments):
-                # 1. Pobierz definicję
-                func_node = self.env.get_function(n)
-                
-                # 2. Oblicz argumenty w bieżącym środowisku (przed zmianą scope'u!)
-                evaluated_args = [self.evaluate(arg) for arg in arguments]
-                
-                # 3. Sprawdź czy liczba argumentów się zgadza
-                if len(evaluated_args) != len(func_node.params):
-                    raise RuntimeError(f"Function '{n}' expects {len(func_node.params)} args, got {len(evaluated_args)}")
-
-                # 4. TWORZENIE SCOPE: To jest serce problemu.
-                # Rodzicem musi być GLOBAL_ENV, aby funkcja miała dostęp do zmiennych globalnych,
-                # ale NIE do zmiennych lokalnych innych funkcji wywołanych wcześniej.
-                new_scope = Environment(parent=self.global_env)
-                
-                # 5. Przypisz argumenty do nazw parametrów
-                for param_name, value in zip(func_node.params, evaluated_args):
-                    new_scope.set(param_name, value)
-                
-                # 6. Wykonaj w nowym środowisku
-                previous_env = self.env
-                self.env = new_scope
-                
-                try:
-                    for child in func_node.body:
+            case IfNode(left=left, op=op, right=right, body=body):
+                if self._evaluate_comparison(left, op, right, node):
+                    for child in body:
                         self.execute(child)
-                except ReturnSignal as ret:
-                    return ret.value
-                finally:
-                    # 7. ZAWSZE wracaj do poprzedniego środowiska
-                    self.env = previous_env
+
+            case ColorNode(color_name=color):
+                value = self.evaluate(color)
+                self._require_string(value, node, "COLOR")
+                self._execute_command(commands.execute_color, value, node=node)
+
+            case WidthNode(size=size):
+                value = self.evaluate(size)
+                self._require_number(value, node, "WIDTH")
+                if value <= 0:
+                    self._raise_runtime(node, "WIDTH requires a positive number")
+                self._execute_command(commands.execute_width, value, node=node)
+
+            case SpeedNode(level=level):
+                value = self.evaluate(level)
+                self._require_number(value, node, "SPEED")
+                if not isinstance(value, int) or isinstance(value, bool):
+                    self._raise_runtime(node, "SPEED requires an integer from 0 to 10")
+                if not 0 <= value <= 10:
+                    self._raise_runtime(node, "SPEED requires an integer from 0 to 10")
+                self._execute_command(commands.execute_speed, value, node=node)
+
+            case PenUpNode():
+                self._execute_command(commands.execute_penup, node=node)
+
+            case PenDownNode():
+                self._execute_command(commands.execute_pendown, node=node)
+
+            case FunctionDefNode():
+                # Function declarations have already been preloaded globally.
                 return None
 
+            case FunctionCallNode(name=name, args=arguments):
+                return self.execute_function_call(
+                    function_name=name,
+                    arguments=arguments,
+                    value_required=False,
+                    call_node=node,
+                )
 
-            case ReturnNode(value=v):
-                val = self.evaluate(v)
-                raise ReturnSignal(val)
-                    
+            case ReturnNode(value=value):
+                raise ReturnSignal(self.evaluate(value))
+
+            case _:
+                self._raise_runtime(node, f"Unsupported AST node {type(node).__name__}")
+
+    # ===================================================================
+    # Function calls
+    # ===================================================================
+
+    def execute_function_call(
+        self,
+        function_name: str,
+        arguments: list[ASTNode],
+        value_required: bool,
+        call_node: ASTNode | None = None,
+    ):
+        """Execute one function call and optionally require a returned value."""
+        try:
+            function = self.global_env.get_function(function_name)
+        except RuntimeError as exc:
+            self._raise_runtime(call_node, str(exc))
+
+        # Arguments are evaluated in the caller before the active environment
+        # changes to the new function environment.
+        evaluated_arguments = [self.evaluate(argument) for argument in arguments]
+
+        if len(evaluated_arguments) != len(function.params):
+            self._raise_runtime(
+                call_node or function,
+                f"Function '{function_name}' expects {len(function.params)} "
+                f"arguments, got {len(evaluated_arguments)}",
+            )
+
+        function_env = FunctionEnvironment(parent=self.global_env)
+        for parameter, value in zip(function.params, evaluated_arguments):
+            function_env.set_variable(parameter, value)
+
+        previous_env = self.env
+        self.env = function_env
+        returned = _NO_RETURN
+
+        try:
+            for child in function.body:
+                self.execute(child)
+        except ReturnSignal as signal:
+            returned = signal.value
+        finally:
+            # Call-state restoration is independent from lexical scope lookup.
+            self.env = previous_env
+
+        if returned is _NO_RETURN:
+            if value_required:
+                self._raise_runtime(
+                    call_node or function,
+                    f"Function '{function_name}' did not return a value",
+                )
+            return None
+
+        return returned
+
+    # ===================================================================
+    # Runtime validation helpers
+    # ===================================================================
+
+    @staticmethod
+    def _is_number(value) -> bool:
+        """Return whether ``value`` is a Carapace numeric runtime value."""
+        return isinstance(value, Real) and not isinstance(value, bool)
+
+    def _require_number(self, value, node: ASTNode, context: str) -> None:
+        """Require a numeric runtime value for the given language context."""
+        if not self._is_number(value):
+            self._raise_runtime(
+                node,
+                f"{context} requires NUMBER, got {type(value).__name__.upper()}",
+            )
+
+    def _require_string(self, value, node: ASTNode, context: str) -> None:
+        """Require a string runtime value for the given language context."""
+        if not isinstance(value, str):
+            self._raise_runtime(
+                node,
+                f"{context} requires STRING, got {type(value).__name__.upper()}",
+            )
+
+    def _require_repeat_count(self, value, node: ASTNode) -> None:
+        """Validate the runtime constraints of a REPEAT iteration count."""
+        self._require_number(value, node, "REPEAT")
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            self._raise_runtime(node, "REPEAT requires a non-negative integer")
+
+    def _evaluate_comparison(
+        self,
+        left_node: ASTNode,
+        op: TokenType,
+        right_node: ASTNode,
+        node: ASTNode,
+    ) -> bool:
+        """Evaluate one comparison expression with runtime type checks."""
+        left = self.evaluate(left_node)
+        right = self.evaluate(right_node)
+
+        if op == TokenType.EQ:
+            if self._is_number(left) and self._is_number(right):
+                return left == right
+            if isinstance(left, str) and isinstance(right, str):
+                return left == right
+            self._raise_runtime(node, "Equality operands must have compatible scalar types")
+
+        if op in (TokenType.LT, TokenType.GT):
+            self._require_number(left, node, "Ordering comparison")
+            self._require_number(right, node, "Ordering comparison")
+            return left < right if op == TokenType.LT else left > right
+
+        self._raise_runtime(node, f"Unknown comparison operator: {op.name}")
+
+    def _execute_command(self, command, *args, node: ASTNode) -> None:
+        """Translate expected turtle/user-value failures into Carapace RuntimeError."""
+        try:
+            command(*args)
+        except (TypeError, ValueError) as exc:
+            self._raise_runtime(node, str(exc))
+        except Exception as exc:
+            # Turtle uses TurtleGraphicsError for invalid colors and Tk may use
+            # TclError for user-supplied backend values.  Do not broadly turn
+            # unrelated implementation bugs into ordinary language errors.
+            if exc.__class__.__name__ in {"TurtleGraphicsError", "TclError"}:
+                self._raise_runtime(node, str(exc))
+            raise
+
+    def _raise_runtime(self, node: ASTNode | None, message: str):
+        """Raise a Carapace runtime error enriched with source-line metadata."""
+        if node is not None and getattr(node, "line", None) is not None:
+            raise RuntimeError(f"Line {node.line}: {message}")
+        raise RuntimeError(message)

@@ -1,6 +1,7 @@
 SET size 50
 SET multiplier 2
 FORWARD size * multiplier + 10
+
 REPEAT 4 * (2 + 1) [
     FORWARD 100
     RIGHT 90

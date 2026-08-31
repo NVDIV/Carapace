@@ -1,8 +1,10 @@
-from src.lexer import Lexer
-from src.parser import BinOpNode, LiteralNode, Parser, SetNode
+from Carapace.src.lexer import Lexer
+from Carapace.src.parser import Parser
+from Carapace.src.ast import BinOpNode, LiteralNode, SetNode
 
 
 def test_parse_set_statement():
+    """A basic SET statement produces the expected AST structure."""
     ast = Parser(Lexer("SET x 10").tokenize()).parse()
 
     assert len(ast) == 1
@@ -13,6 +15,7 @@ def test_parse_set_statement():
 
 
 def test_parse_expression_with_addition():
+    """A basic addition expression produces a BinOpNode."""
     ast = Parser(Lexer("SET x 10 + 5").tokenize()).parse()
 
     node = ast[0]

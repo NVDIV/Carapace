@@ -11,8 +11,8 @@ Run with:
 
 import pytest
 
-from src.lexer import Lexer, TokenType
-from src.errors import LexerError
+from Carapace.src.lexer import Lexer, TokenType
+from Carapace.src.errors import LexerError
 
 
 # ---------------------------------------------------------------------------
