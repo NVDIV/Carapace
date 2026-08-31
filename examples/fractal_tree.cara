@@ -1,0 +1,18 @@
+COLOR "FORESTGREEN"
+WIDTH 2
+SPEED 0
+LEFT 90
+
+FUNC branch length [
+    IF length > 8 [
+        FORWARD length
+        LEFT 30
+        CALL branch length * 2 / 3
+        RIGHT 60
+        CALL branch length * 2 / 3
+        LEFT 30
+        BACKWARD length
+    ]
+]
+
+CALL branch 120

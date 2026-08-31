@@ -1,15 +1,10 @@
 import pytest
 
-from src.lexer import TokenType
-from src.parser import (
-    LiteralNode,
-    VariableNode,
-    BinOpNode,
-    FunctionCallNode,
-    SetNode,
-    ForwardNode,
+from Carapace.src.lexer import TokenType
+from Carapace.src.ast import (
+    LiteralNode, VariableNode, BinOpNode, FunctionCallNode, SetNode, ForwardNode,
 )
-from src.errors import ParserError
+from Carapace.src.errors import ParserError
 
 from .conftest import parse, parse_one
 

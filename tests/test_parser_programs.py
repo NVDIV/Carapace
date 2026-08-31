@@ -1,21 +1,12 @@
-from src.parser import (
-    SetNode,
-    LiteralNode,
-    VariableNode,
-    BinOpNode,
-    ForwardNode,
-    RightNode,
-    PenUpNode,
-    PenDownNode,
-    ColorNode,
-    WidthNode,
-    RepeatNode,
-    IfNode,
-    FunctionDefNode,
-    FunctionCallNode,
+import pytest
+
+from Carapace.src.errors import ParserError
+
+from Carapace.src.ast import (
+    SetNode, LiteralNode, VariableNode, BinOpNode, ForwardNode, RightNode, PenUpNode, PenDownNode, ColorNode, WidthNode, RepeatNode, IfNode, FunctionDefNode, FunctionCallNode, ReturnNode,
 )
 
-from tests.conftest import parse
+from Carapace.tests.conftest import parse
 
 
 # ===========================================================================
@@ -263,10 +254,7 @@ def test_function_with_assignment_and_return():
                         right=LiteralNode(2),
                     ),
                 ),
-                __import__(
-                    "src.parser",
-                    fromlist=["ReturnNode"],
-                ).ReturnNode(
+                ReturnNode(
                     value=VariableNode("result"),
                 ),
             ],
@@ -335,3 +323,29 @@ def test_parser_only_builds_ast():
     assert result == [
         ForwardNode(LiteralNode(100)),
     ]
+
+# ===========================================================================
+# Function syntax errors
+# ===========================================================================
+
+
+def test_unclosed_function_block_raises_parser_error():
+    """EOF inside a FUNC body is reported as a parser error, not an internal error."""
+    import pytest
+
+    from Carapace.src.errors import ParserError
+
+    with pytest.raises(ParserError, match="Unclosed FUNC block"):
+        parse("""
+            FUNC draw size [
+                FORWARD size
+        """)
+
+
+def test_unclosed_function_error_contains_opening_line():
+    """An unclosed FUNC reports the source line where the declaration started."""
+    with pytest.raises(ParserError, match=r"Line 2: Unclosed FUNC"):
+        parse("""
+FUNC draw [
+    FORWARD 10
+""")

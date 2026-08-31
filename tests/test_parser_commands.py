@@ -1,24 +1,12 @@
 import pytest
 
-from src.lexer import TokenType
-from src.parser import (
-    SetNode,
-    LiteralNode,
-    VariableNode,
-    BinOpNode,
-    ForwardNode,
-    BackwardNode,
-    LeftNode,
-    RightNode,
-    PenUpNode,
-    PenDownNode,
-    ColorNode,
-    WidthNode,
-    SpeedNode,
+from Carapace.src.lexer import TokenType
+from Carapace.src.ast import (
+    SetNode, LiteralNode, VariableNode, BinOpNode, ForwardNode, BackwardNode, LeftNode, RightNode, PenUpNode, PenDownNode, ColorNode, WidthNode, SpeedNode,
 )
-from src.errors import ParserError
+from Carapace.src.errors import ParserError
 
-from tests.conftest import parse, parse_one
+from Carapace.tests.conftest import parse, parse_one
 
 
 # ===========================================================================
